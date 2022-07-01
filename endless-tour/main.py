@@ -1,31 +1,12 @@
 import os
 import re
 
-{
-    'Camera_007': {
-        '0': ['-4.5', ' 4.5', ' 1.7999999523162842'], 
-        '1': ['-4.47857141494751', ' 4.5', ' 1.7999999523162842'], 
-        '2': ['-4.4571428298950195', ' 4.5', ' 1.7999999523162842'], 
-        '3': ['-4.435714244842529', ' 4.5', ' 1.7999999523162842'], 
-        '4': ['-4.414285659790039', ' 4.5', ' 1.7999999523162842'], 
-        '5': ['-4.392857074737549', ' 4.5', ' 1.7999999523162842']
-    },
-    'Camera_006': {
-        '80': ['-4.5', ' 4.5', ' 1.7999999523162842'], 
-        '81': ['-4.5', ' 3.664285659790039', ' 1.7999999523162842'], 
-        '82': ['-4.5', ' 3.6857147216796875', ' 1.7999999523162842'], 
-        '83': ['-4.5', ' 3.7071428298950195', ' 1.7999999523162842'], 
-        '84': ['-4.5', ' 3.728571891784668', ' 1.7999999523162842'], 
-        '85': ['-4.5', ' 3.75', ' 1.7999999523162842']
-    }
-}
-    
-
-class USDAParser:
-    def __init__(self, file_name):
+class FrameMap:
+    def __init__(self, file_name, render_top_directory):
         self.file_lines = self.read_file(file_name)
         self.data = self.parse_data(self.file_lines)
         self.add_intersections()
+        self.add_frame_paths(render_top_directory)
 
     def read_file(self, file_name):
         with open(file_name, 'r') as file:
@@ -35,15 +16,6 @@ class USDAParser:
             lines[idx] = lines[idx].strip()
 
         return lines
-
-    def skip_line(self, line):
-        skip_start_characters = ['#', '(']
-        skip = False
-        for char in skip_start_characters:
-            if line.startswith(char):
-                skip = True
-        
-        return skip
 
     def parse_data(self, lines):
         camera_names = []
@@ -79,13 +51,30 @@ class USDAParser:
                     for frame_1, location_coords_list_1 in cam_1_values['frame_coords'].items():
                         for frame_2, location_coords_list_2 in cam_2_values['frame_coords'].items():
                             if location_coords_list_1 == location_coords_list_2:
-                                intersection_dict = {'frame': frame_1, 'connected_camera': cam_2}
+                                intersection_dict = {'frame': frame_1, 'connected_camera': cam_2, 'connected_frame': frame_2}
                                 #intersections[cam_1][intersection_idx] = intersection_dict
                                 self.data[cam_1]['intersections'][intersection_idx] = intersection_dict
                                 intersection_idx += 1
                                 
                                 print(f'match found: camera {cam_1} frame {frame_1} and camera {cam_2} frame {frame_2}')
 
+    def add_frame_paths(self, render_top_directory):
+        render_top_directory = os.path.normpath(render_top_directory)
+        for camera_render_folder in os.listdir(render_top_directory):
+            frame_file_list = os.listdir(f'{render_top_directory}/{camera_render_folder}')
+            camera_name = camera_render_folder
+            self.data[camera_name]['frame_files'] = {}
+            frame_count = len(self.data[camera_name]['frame_coords'].keys())
+            if len(frame_file_list) == frame_count:
+                for frame_idx in range(frame_count):
+                    frame_path = os.path.join(
+                        render_top_directory, camera_render_folder, 
+                        frame_file_list[frame_idx])
+                    self.data[camera_name]['frame_files'][frame_idx] = frame_path
+            else:
+                print('The number of frames in the export file and the number of frames in the camera render directory don\'t match')
+                return -1
+        
     def write_data(self, output_file):
         with open(output_file, 'w') as file:
             file.write(str(self.data))
@@ -93,17 +82,16 @@ class USDAParser:
     def print_data(self):
         print(self.data)
 
+
 def get_example_data():
-    dir_name = os.path.dirname(__file__)
-    file_name = os.path.join(dir_name, 'example_data', 'endless_tour_test.usda')
-    data_parser = USDAParser(file_name)
+    export_file_dir_name = os.path.dirname(__file__)
+    export_file_name = os.path.join(
+        export_file_dir_name, 'example_data', 'endless_tour_test.usda')
+    render_top_dir = 'D:/blender_renders/tour_test_render_frames'
+    data_parser = FrameMap(export_file_name, render_top_dir)
     animation_data = data_parser.data
 
     return animation_data
-
-
-    
-
 
 def run():
     camera_animation_data = get_example_data()
