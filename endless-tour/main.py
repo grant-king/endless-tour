@@ -178,18 +178,19 @@ class RandomTour:
 
 
 class VideoMaker:
-    def __init__(self, frames_dir, video_dir, video_name, framerate):
-        self.frames_dir = frames_dir
-        self.video_dir = video_dir
+    def __init__(self, frames_dir, video_dir, video_name, framerate, inputs_fmt="d"):
+        self.frames_dir = os.path.normpath(frames_dir)
+        self.video_dir = os.path.normpath(video_dir)
         self.video_name = video_name
         self.video_file = os.path.join(self.video_dir, f'{self.video_name}.mp4')
         self.framerate = framerate
+        self.inputs_fmt = inputs_fmt
         self.make_video()
     
     def make_video(self):
         framerate_cmd = f'-framerate {self.framerate}'
         codec_cmd = '-vcodec libx264rgb'
-        inputs_cmd = f'-i {self.frames_dir}/%d.png'
+        inputs_cmd = f'-i {self.frames_dir}/%{self.inputs_fmt}.png'
         dest_cmd = self.video_file
 
         ffmpeg_command = f'ffmpeg {framerate_cmd} {inputs_cmd} \
@@ -208,7 +209,7 @@ def get_example_data():
     return animation_data
 
 def make_random_tour(camera_animation_data):
-    random_tour = RandomTour(camera_animation_data, 4200)
+    random_tour = RandomTour(camera_animation_data, 12600)
     random_tour.build_tour_frame_dir('D:/blender_renders')
     random_tour.make_video('D:/blender_renders/animations')
 
