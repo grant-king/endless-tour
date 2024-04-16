@@ -91,9 +91,11 @@ class RandomTour:
         
         self.all_cameras = list(self.animation_data.keys())
         self.current_camera = random.choice(self.all_cameras)
-        self.tour_cameras_order = [self.current_camera]
-        self.camera_just_switched = False
         self.current_camera_frame_idx = 0
+        self.tour_cameras_order = [{
+            'camera': self.current_camera, 
+            'start_frame': self.current_camera_frame_idx}]
+        self.camera_just_switched = False
         self.direction = random.choice([1, -1])
         self.update_camera_path_info()
 
@@ -144,8 +146,13 @@ class RandomTour:
                 self.current_camera_frame_idx = next_frame_idx # set next frame
             self.camera_just_switched = False
         else:
+            self.tour_cameras_order[-1]['end_frame'] = self.current_camera_frame_idx
+            # setup next camera
             self.current_camera = intersection['connected_camera']
-            self.tour_cameras_order.append(self.current_camera)
+            camera_info =  {
+                'camera': self.current_camera, 
+                'start_frame': self.current_camera_frame_idx}
+            self.tour_cameras_order.append(camera_info)
             self.current_camera_frame_idx = intersection['connected_frame']
             self.camera_just_switched = True
             self.direction = random.choice([-1, 1])
@@ -166,6 +173,7 @@ class RandomTour:
         self.tour_name = f'tour_{suffix_str}'
         self.tour_frames_dir = os.path.normpath(f'{main_dir}/{self.tour_name}_frames')
         os.mkdir(self.tour_frames_dir)
+        print(f'copying {len(self.frames_list)} frames to {self.tour_name} directory...')
         for frame_idx, frame_render_file in enumerate(self.frames_list):
             frame_file_name = f'{frame_idx}.png'
             destination = os.path.join(self.tour_frames_dir, frame_file_name)
@@ -201,15 +209,21 @@ class VideoMaker:
 def get_example_data():
     export_file_dir_name = os.path.dirname(__file__)
     export_file_name = os.path.join(
-        export_file_dir_name, 'example_data', 'endless_tour_test.usda')
-    render_top_dir = 'D:/blender_renders/tour_test_render_frames'
+        export_file_dir_name, 'example_data', 'endless_tour_test_2.usda')
+    render_top_dir = 'D:/blender_renders/tour_test_2_render_frames'
     data_parser = FrameMap(export_file_name, render_top_dir)
     animation_data = data_parser.data
 
     return animation_data
 
 def make_random_tour(camera_animation_data):
-    random_tour = RandomTour(camera_animation_data, 12600)
+    random_tour = RandomTour(camera_animation_data, 54000)
+    
+    tour_track = random_tour.tour_cameras_order
+    print(f'Tour Track generated. {len(tour_track)} camera switches used:')
+    for item in tour_track:
+        print(item)
+    
     random_tour.build_tour_frame_dir('D:/blender_renders')
     random_tour.make_video('D:/blender_renders/animations')
 
